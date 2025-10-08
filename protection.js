@@ -1,18 +1,27 @@
-// ===== 8. protection.js =====
+// ========================================
+// FILE 8: protection.js
+// ========================================
 (function() {
-    'use strict';
-    
     window.initContentProtection = function() {
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('copy', e => e.preventDefault());
-        document.addEventListener('cut', e => e.preventDefault());
-        document.addEventListener('selectstart', e => {
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+        });
+        
+        document.addEventListener('cut', function(e) {
+            e.preventDefault();
+        });
+        
+        document.addEventListener('selectstart', function(e) {
             if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 e.preventDefault();
             }
         });
         
-        document.addEventListener('keydown', e => {
+        document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && 
                 (e.key === 'c' || e.key === 'x' || e.key === 'u' || e.key === 's' || e.key === 'p')) {
                 e.preventDefault();
@@ -22,6 +31,6 @@
             }
         });
     };
-    
-    console.log('✅ protection.js loaded');
+
+    console.log('✅ protection.js loaded and executed');
 })();
