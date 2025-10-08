@@ -1,7 +1,7 @@
-// ===== 6. checkout-system.js =====
+// ========================================
+// FILE 6: checkout-system.js
+// ========================================
 (function() {
-    'use strict';
-    
     window.openCheckout = function() {
         if (window.ECOM_STATE.cart.length === 0) {
             alert('Your cart is empty!');
@@ -17,11 +17,13 @@
     };
 
     window.selectDelivery = function(element, type) {
-        document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('active'));
+        document.querySelectorAll('.radio-option').forEach(function(opt) {
+            opt.classList.remove('active');
+        });
         element.classList.add('active');
         
-        const addressGroup = document.getElementById('address-group');
-        const addressInput = addressGroup.querySelector('input');
+        var addressGroup = document.getElementById('address-group');
+        var addressInput = addressGroup.querySelector('input');
         
         if (type === 'pickup') {
             addressGroup.style.display = 'none';
@@ -33,9 +35,9 @@
     };
 
     window.setupMobileValidation = function() {
-        const form = document.getElementById('checkout-form');
-        const mobileInput = form?.querySelector('input[name="mobile"]');
-        const errorDiv = document.getElementById('mobile-error');
+        var form = document.getElementById('checkout-form');
+        var mobileInput = form ? form.querySelector('input[name="mobile"]') : null;
+        var errorDiv = document.getElementById('mobile-error');
         
         if (!mobileInput || !errorDiv) return;
         
@@ -49,38 +51,40 @@
     };
 
     window.setupCheckoutForm = function() {
-        const form = document.getElementById('checkout-form');
+        var form = document.getElementById('checkout-form');
         if (!form) return;
         
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const formData = new FormData(this);
-            const deliveryType = formData.get('delivery');
-            const total = window.ECOM_STATE.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const deliveryCharge = deliveryType === 'delivery' ? 50 : 0;
-            const finalTotal = total + deliveryCharge;
+            var formData = new FormData(this);
+            var deliveryType = formData.get('delivery');
+            var total = window.ECOM_STATE.cart.reduce(function(sum, item) {
+                return sum + (item.price * item.quantity);
+            }, 0);
+            var deliveryCharge = deliveryType === 'delivery' ? 50 : 0;
+            var finalTotal = total + deliveryCharge;
             
-            let message = `*New Order*\n\n`;
-            message += `*Customer Details:*\n`;
-            message += `Name: ${formData.get('name')}\n`;
-            message += `Mobile: ${formData.get('mobile')}\n`;
-            if (formData.get('email')) message += `Email: ${formData.get('email')}\n`;
-            message += `\n*Delivery:* ${deliveryType === 'delivery' ? 'Home Delivery' : 'Pickup'}\n`;
+            var message = '*New Order*\n\n';
+            message += '*Customer Details:*\n';
+            message += 'Name: ' + formData.get('name') + '\n';
+            message += 'Mobile: ' + formData.get('mobile') + '\n';
+            if (formData.get('email')) message += 'Email: ' + formData.get('email') + '\n';
+            message += '\n*Delivery:* ' + (deliveryType === 'delivery' ? 'Home Delivery' : 'Pickup') + '\n';
             if (deliveryType === 'delivery') {
-                message += `Address: ${formData.get('address')}\n`;
+                message += 'Address: ' + formData.get('address') + '\n';
             }
-            message += `\n*Order Items:*\n`;
+            message += '\n*Order Items:*\n';
             
-            window.ECOM_STATE.cart.forEach(item => {
-                message += `• ${item.name} x${item.quantity} - ₹${item.price * item.quantity}\n`;
+            window.ECOM_STATE.cart.forEach(function(item) {
+                message += '• ' + item.name + ' x' + item.quantity + ' - ₹' + (item.price * item.quantity) + '\n';
             });
             
-            message += `\n*Subtotal:* ₹${total}`;
-            if (deliveryCharge > 0) message += `\n*Delivery Charge:* ₹${deliveryCharge}`;
-            message += `\n*Total:* ₹${finalTotal}`;
+            message += '\n*Subtotal:* ₹' + total;
+            if (deliveryCharge > 0) message += '\n*Delivery Charge:* ₹' + deliveryCharge;
+            message += '\n*Total:* ₹' + finalTotal;
             
-            const whatsappUrl = `https://wa.me/${window.ECOM_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            var whatsappUrl = 'https://wa.me/' + window.ECOM_CONFIG.WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message);
             window.open(whatsappUrl, '_blank');
             
             window.ECOM_STATE.cart = [];
@@ -89,6 +93,7 @@
             this.reset();
         });
     };
-    
-    console.log('✅ checkout-system.js loaded');
+
+    console.log('✅ checkout-system.js loaded and executed');
 })();
+
