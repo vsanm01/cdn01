@@ -2,7 +2,7 @@
 (function () {
   document.addEventListener("DOMContentLoaded", function () {
     const message = document.createElement("div");
-    message.textContent = "👋 Welcome to our website!";
+    message.textContent = "👋👋👋👋👋👋 Welcome to our website!";
     message.style.position = "fixed";
     message.style.bottom = "20px";
     message.style.right = "20px";
