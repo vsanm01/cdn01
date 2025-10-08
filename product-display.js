@@ -1,78 +1,144 @@
-// ========================================
-// FILE 3: product-display.js
-// ========================================
-(function() {
-    window.displayProducts = function(products) {
-        var grid = document.getElementById('products-grid');
-        if (!grid) return;
+// ============================================================================
+// MODULE 2: PRODUCT DISPLAY
+// ============================================================================
+
+const ProductDisplay = (function() {
+    'use strict';
+
+    let config = {
+        containerSelector: '#products-grid',
+        categoryContainerSelector: '#categories',
+        onAddToCart: null,
+        onCategoryFilter: null,
+        currencySymbol: '₹'
+    };
+
+    let allCategories = [];
+
+    function init(options) {
+        config = { ...config, ...options };
+    }
+
+    function escapeHtml(text) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function createImageContent(product) {
+        if (product.image && DBIntegration.isValidURL(product.image)) {
+            const imageUrl = DBIntegration.convertGoogleDriveUrl(product.image);
+            return `<img src="${imageUrl}" alt="${escapeHtml(product.name)}" 
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div style="display: none; font-size: 48px;">🛒</div>`;
+        } else if (product.image && product.image.trim() !== '') {
+            return `<div style="font-size: 48px;">${product.image}</div>`;
+        } else {
+            return `<div style="font-size: 48px;">🛒</div>`;
+        }
+    }
+
+    function createProductCard(product) {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.setAttribute('data-product-id', product.id);
+        const imageContent = createImageContent(product);
+
+        card.innerHTML = `
+            <div class="product-image">${imageContent}</div>
+            <div class="product-info">
+                <h3 class="product-title">${escapeHtml(product.name)}</h3>
+                <button class="category-tag" data-category="${escapeHtml(product.category)}">
+                    ${escapeHtml(product.category)}
+                </button>
+                <div class="product-price">
+                    <span class="currency-symbol">${config.currencySymbol}</span>${product.price}
+                </div>
+                <button class="add-to-cart" data-product-id="${product.id}">Add to Cart</button>
+            </div>
+        `;
+
+        card.querySelector('.add-to-cart').addEventListener('click', function() {
+            if (config.onAddToCart) config.onAddToCart(product.id);
+            const originalText = this.textContent;
+            this.textContent = 'Added!';
+            this.style.background = '#28a745';
+            setTimeout(() => { this.textContent = originalText; }, 1000);
+        });
+
+        card.querySelector('.category-tag').addEventListener('click', function() {
+            filterByCategory(product.category);
+        });
+
+        return card;
+    }
+
+    function displayProducts(productList) {
+        const container = document.querySelector(config.containerSelector);
+        if (!container) return;
+        container.innerHTML = '';
         
-        if (!products || products.length === 0) {
-            window.showNoProductsMessage();
+        if (productList.length === 0) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: #6c757d;">No products found</div>';
             return;
         }
         
-        grid.innerHTML = products.map(function(product) {
-            var imageUrl = window.convertGoogleDriveUrl(product.image);
-            var isImageUrl = window.isValidURL(imageUrl);
-            
-            return '<div class="product-card"><div class="product-image">' + 
-                (isImageUrl ? '<img src="' + imageUrl + '" alt="' + product.name + '" onerror="this.parentElement.innerHTML=\'🛒\'">' : product.image) +
-                '</div><div class="product-info"><h3 class="product-title">' + product.name + '</h3>' +
-                '<div class="product-price"><span class="currency-symbol">₹</span>' + product.price + '</div>' +
-                '<button class="category-tag" onclick="window.filterProducts(\'' + product.category + '\', this)">' + product.category + '</button>' +
-                '<button class="add-to-cart" onclick="window.addToCart(' + product.id + ')">Add to Cart</button></div></div>';
-        }).join('');
-    };
-
-    window.filterProducts = function(category, element) {
-        window.ECOM_STATE.currentCategory = category;
-        
-        document.querySelectorAll('.category-item').forEach(function(item) {
-            item.classList.remove('active');
+        productList.forEach(product => {
+            container.appendChild(createProductCard(product));
         });
+    }
+
+    function displayCategories(categories) {
+        const container = document.querySelector(config.categoryContainerSelector);
+        if (!container) return;
+        allCategories = categories;
+        const isMobile = window.innerWidth <= 768;
+        const maxCategories = isMobile ? 4 : 6;
+        const visibleCategories = categories.slice(0, maxCategories);
         
-        if (element) {
-            var categoryItems = document.querySelectorAll('.category-item');
-            for (var i = 0; i < categoryItems.length; i++) {
-                var item = categoryItems[i];
-                if (item.textContent.trim() === category || (category === 'all' && item.textContent.trim() === 'All')) {
-                    item.classList.add('active');
-                    break;
-                }
-            }
-        }
+        container.innerHTML = '<a href="#" class="category-item active always-visible" data-category="all">All</a>';
         
-        if (category === 'all') {
-            window.displayProducts(window.ECOM_STATE.products);
-        } else {
-            var filtered = window.ECOM_STATE.products.filter(function(p) {
-                return p.category.toLowerCase() === category.toLowerCase();
+        visibleCategories.forEach(category => {
+            const categoryLink = document.createElement('a');
+            categoryLink.href = '#';
+            categoryLink.className = 'category-item';
+            categoryLink.textContent = category;
+            categoryLink.setAttribute('data-category', category);
+            categoryLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                filterByCategory(category);
             });
-            window.displayProducts(filtered);
-        }
-    };
+            container.appendChild(categoryLink);
+        });
+    }
 
-    window.updateCategories = function() {
-        var categoriesContainer = document.getElementById('categories');
-        if (!categoriesContainer) return;
-        
-        var allCat = categoriesContainer.querySelector('.always-visible');
-        var categories = [];
-        
-        window.ECOM_STATE.products.forEach(function(p) {
-            if (categories.indexOf(p.category) === -1) {
-                categories.push(p.category);
+    function filterByCategory(category) {
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-category') === category) {
+                item.classList.add('active');
             }
         });
-        
-        var isMobile = window.innerWidth <= 768;
-        var displayCategories = isMobile ? categories.slice(0, 5) : categories.slice(0, 8);
-        
-        categoriesContainer.innerHTML = allCat.outerHTML + displayCategories.map(function(cat) {
-            return '<a class="category-item" href="#" onclick="window.filterProducts(\'' + cat + '\', this); return false;">' + cat + '</a>';
-        }).join('');
-    };
+        if (config.onCategoryFilter) config.onCategoryFilter(category);
+    }
 
-    console.log('✅ product-display.js loaded and executed');
+    function showLoading() {
+        const container = document.querySelector(config.containerSelector);
+        if (container) {
+            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #6c757d; font-size: 18px;">
+                <div style="font-size: 48px; margin-bottom: 16px; animation: spin 1s linear infinite;">⏳</div>
+                <div>Loading products...</div></div>`;
+        }
+    }
+
+    function showError(message) {
+        const container = document.querySelector(config.containerSelector);
+        if (container) {
+            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #dc3545; font-size: 18px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                <div>Failed to load products</div>
+                <div style="font-size: 14px; margin-top: 8px; color: #6c757d;">${escapeHtml(message)}</div></div>`;
+        }
+    }
+
+    return { init, displayProducts, displayCategories, filterByCategory, showLoading, showError };
 })();
-
