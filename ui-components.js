@@ -1,6 +1,4 @@
-## 7. **ui-components.js** - UI Components & Categories
-
-```javascript
+//7. **ui-components.js** - UI Components & Categories
 // UI components and category management
 function updateCategories() {
     const categoriesContainer = document.getElementById('categories');
@@ -109,5 +107,3 @@ function setupModalClosing() {
         }
     };
 }
-```
-
