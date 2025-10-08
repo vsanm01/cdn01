@@ -1,103 +1,264 @@
 // ============================================================================
 // MODULE 1: DATABASE INTEGRATION
 // ============================================================================
+// db-integration.js - Google Sheets Integration
+// CDN Version for ecommerce_blogger_theme
 
-const DBIntegration = (function() {
-    'use strict';
+// Google Apps Script Web Service Configuration
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwriYfxvUUryvzvDAZ31FRgjDfcXQv6eQRGSbFaittSOx9ncWl0YSoDpi7sDbcfKO46Q/exec';
 
-    let config = {
-        scriptUrl: '',
-        onDataLoad: null,
-        onError: null
-    };
+// Application state
+let products = [];
+let isLoading = false;
 
-    let products = [];
-    let categories = [];
-
-    function init(options) {
-        config = { ...config, ...options };
-        if (!config.scriptUrl) {
-            console.error('DBIntegration: Script URL is required');
-            return;
-        }
+// Utility Functions
+function getCurrentDomain() {
+    try {
+        return window.location.hostname;
+    } catch (error) {
+        console.error('Error getting current domain:', error);
+        return 'localhost';
     }
+}
 
-    function isValidURL(string) {
-        try {
-            new URL(string);
-            return true;
-        } catch (_) {
-            return false;
-        }
+function isValidURL(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
     }
+}
 
-    function convertGoogleDriveUrl(url) {
-        if (url && url.includes('drive.google.com')) {
-            let fileId = null;
-            const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (match1) fileId = match1[1];
-            const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-            if (match2) fileId = match2[1];
-            if (fileId) {
-                return `https://drive.google.com/thumbnail?id=${fileId}&sz=s400`;
+// JSONP implementation function
+function makeJSONPRequest(currentDomain, timeout = 15000) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('Request timeout after ' + timeout + 'ms'));
+        }, timeout);
+        
+        const cleanup = () => {
+            if (script && script.parentNode) {
+                script.parentNode.removeChild(script);
             }
-        }
-        return url;
-    }
+            delete window[callbackName];
+            clearTimeout(timeoutId);
+        };
+        
+        window[callbackName] = function(data) {
+            cleanup();
+            resolve(data);
+        };
+        
+        const params = new URLSearchParams({
+            action: 'getData',
+            callback: callbackName,
+            referrer: window.location.href,
+            origin: window.location.origin,
+            timestamp: Date.now()
+        });
+        
+        const script = document.createElement('script');
+        script.src = `${SCRIPT_URL}?${params.toString()}`;
+        
+        script.onerror = function() {
+            cleanup();
+            reject(new Error('Script loading failed - Network error or CORS issue'));
+        };
+        
+        document.head.appendChild(script);
+    });
+}
 
-    async function fetchProducts() {
+// Fetch products from Google Apps Script with retry logic
+async function fetchProductsFromScript(maxRetries = 3) {
+    if (isLoading) {
+        console.log('Already loading products...');
+        return;
+    }
+    
+    isLoading = true;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            const response = await fetch(`${config.scriptUrl}?action=getData`);
-            const result = await response.json();
+            if (attempt === 1 && typeof showLoadingMessage === 'function') {
+                showLoadingMessage();
+            }
             
-            if (result.status === 'success' && result.data && result.data.length > 1) {
-                const rows = result.data.slice(1);
-                products = rows.map((row, index) => ({
-                    id: parseInt(row[0]) || index + 1,
-                    name: row[1] || '',
-                    price: parseInt(row[2]) || 0,
-                    category: row[3] || '',
-                    image: row[4] || '🛒'
-                })).filter(product => product.name && product.price > 0);
-                
-                categories = [...new Set(products.map(p => p.category))].filter(cat => cat);
-                
-                if (config.onDataLoad) {
-                    config.onDataLoad(products, categories);
+            const currentDomain = getCurrentDomain();
+            console.log(`Fetching data for domain: ${currentDomain} (Attempt ${attempt}/${maxRetries})`);
+            
+            const timeout = 10000 + (attempt - 1) * 5000;
+            const result = await makeJSONPRequest(currentDomain, timeout);
+            
+            console.log('Response from Google Apps Script:', result);
+            
+            if (result.status === 'success') {
+                if (result.data && Array.isArray(result.data) && result.data.length > 1) {
+                    processProductData(result.data);
+                    console.log(`✅ Successfully loaded ${products.length} products`);
+                    isLoading = false;
+                    return;
+                } else {
+                    if (typeof showNoProductsMessage === 'function') showNoProductsMessage();
+                    isLoading = false;
+                    return;
                 }
-                return { success: true, products, categories };
-            } else if (result.status === 'success' && result.data.length <= 1) {
-                if (config.onError) config.onError('No products found');
-                return { success: false, message: 'No products found' };
+            } else if (result.status === 'error') {
+                if (attempt === maxRetries) {
+                    handleScriptError(result, currentDomain);
+                    isLoading = false;
+                    return;
+                } else {
+                    console.log(`Server error on attempt ${attempt}, retrying...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    continue;
+                }
             } else {
-                throw new Error(result.message || 'Failed to fetch data');
+                throw new Error('Unexpected response format from server');
             }
+            
         } catch (error) {
-            console.error('DBIntegration Error:', error);
-            if (config.onError) config.onError(error.message);
-            return { success: false, message: error.message };
+            console.error(`❌ Error on attempt ${attempt}:`, error);
+            
+            if (attempt === maxRetries) {
+                if (error.message.includes('timeout')) {
+                    if (typeof showErrorMessage === 'function') {
+                        showErrorMessage('Request timeout. Please check your internet connection and try again.');
+                    }
+                } else if (error.message.includes('Domain not authorized')) {
+                    if (typeof showDomainErrorMessage === 'function') {
+                        showDomainErrorMessage(getCurrentDomain());
+                    }
+                } else if (error.message.includes('Network error') || error.message.includes('Script loading failed')) {
+                    if (typeof showErrorMessage === 'function') {
+                        showErrorMessage('Network error. Please check your internet connection and try again.');
+                    }
+                } else {
+                    if (typeof showErrorMessage === 'function') {
+                        showErrorMessage(`Error: ${error.message}`);
+                    }
+                }
+            } else {
+                console.log(`Retrying in ${attempt} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
         }
     }
+    
+    isLoading = false;
+}
 
-    function getProducts() { return products; }
-    function getCategories() { return categories; }
-    function getProductById(id) { return products.find(p => p.id === id); }
-    function filterByCategory(category) {
-        if (category === 'all') return products;
-        return products.filter(p => p.category === category);
+// Google Drive URL Converter Function
+function convertGoogleDriveUrl(url) {
+    if (url && url.includes('drive.google.com')) {
+        let fileId = null;
+
+        const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match1) fileId = match1[1];
+
+        const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (match2) fileId = match2[1];
+
+        const match3 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (match3) fileId = match3[1];
+
+        if (fileId) {
+            return `https://drive.google.com/thumbnail?id=${fileId}&sz=s400`;
+        }
     }
-    function searchProducts(query) {
-        const lowerQuery = query.toLowerCase();
-        return products.filter(p => 
-            p.name.toLowerCase().includes(lowerQuery) || 
-            p.category.toLowerCase().includes(lowerQuery)
+    return url;
+}
+
+// Check if string is an emoji
+function isEmoji(str) {
+    const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u;
+    return emojiRegex.test(str);
+}
+
+// Process the raw data from Google Sheets into product objects
+function processProductData(rawData) {
+    try {
+        const dataRows = rawData.slice(1);
+        
+        products = dataRows.map((row, index) => {
+            const product = {
+                id: parseInt(row[0]) || (index + 1),
+                name: (row[1] || '').toString().trim(),
+                price: parseFloat(row[2]) || 0,
+                category: (row[3] || '').toString().trim(),
+                image: (row[4] || '🛒').toString().trim()
+            };
+            
+            if (product.image) {
+                if (isValidURL(product.image)) {
+                    product.image = convertGoogleDriveUrl(product.image);
+                } else if (isEmoji(product.image)) {
+                    product.image = product.image;
+                } else {
+                    product.image = '🛒';
+                }
+            } else {
+                product.image = '🛒';
+            }
+
+            return product;
+        }).filter(product => 
+            product.name && 
+            product.name.length > 0 && 
+            product.price > 0 && 
+            product.category
         );
+        
+        if (products.length > 0) {
+            if (typeof displayProducts === 'function') displayProducts(products);
+            if (typeof updateCategories === 'function') updateCategories();
+            if (typeof setupCategoryScroll === 'function') setupCategoryScroll();
+        } else {
+            if (typeof showNoProductsMessage === 'function') showNoProductsMessage();
+        }
+        
+    } catch (error) {
+        console.error('Error processing product data:', error);
+        if (typeof showErrorMessage === 'function') {
+            showErrorMessage('Error processing product data. Please check your Google Sheet format.');
+        }
     }
+}
 
-    return {
-        init, fetchProducts, getProducts, getCategories, 
-        getProductById, filterByCategory, searchProducts,
-        isValidURL, convertGoogleDriveUrl
-    };
-})();
+// Handle specific errors from the Google Apps Script
+function handleScriptError(result, currentDomain) {
+    const errorMessage = result.message || 'Unknown error';
+    
+    if (errorMessage.includes('Domain not authorized')) {
+        if (typeof showDomainErrorMessage === 'function') showDomainErrorMessage(currentDomain);
+    } else if (errorMessage.includes('Rate limit exceeded')) {
+        if (typeof showRateLimitMessage === 'function') showRateLimitMessage();
+    } else if (errorMessage.includes('Sheet') && errorMessage.includes('not found')) {
+        if (typeof showSheetNotFoundMessage === 'function') showSheetNotFoundMessage();
+    } else {
+        if (typeof showErrorMessage === 'function') showErrorMessage(errorMessage);
+    }
+}
 
+// Utility functions for manual data refresh
+function refreshProducts() {
+    console.log('🔄 Manual refresh triggered');
+    fetchProductsFromScript();
+}
+
+function forceRefreshProducts() {
+    products = [];
+    fetchProductsFromScript();
+}
+
+// Export functions
+window.fetchProductsFromScript = fetchProductsFromScript;
+window.refreshProducts = refreshProducts;
+window.forceRefreshProducts = forceRefreshProducts;
+window.products = products;
+
+console.log('✅ db-integration.js loaded successfully');
