@@ -3,7 +3,6 @@
 // ============================================================================
 // search-functionality.js - Search & Suggestions
 // CDN Version for ecommerce_blogger_theme
-
 // Setup search suggestions
 function setupSearchSuggestions() {
     const searchInput = document.getElementById('search-input') || document.getElementById('searchInput');
@@ -156,3 +155,4 @@ window.selectSuggestion = selectSuggestion;
 window.searchProducts = searchProducts;
 
 console.log('✅ search-functionality.js loaded successfully');
+
