@@ -1,6 +1,4 @@
-## 5. **cart-management.js** - Cart Operations
-
-```javascript
+// 5.cart-management.js
 // Cart management functions
 function addToCart(productId, buttonElement) {
     const product = window.ECOM_STATE.products.find(p => p.id === productId);
@@ -118,4 +116,3 @@ function removeFromCart(productId) {
     updateCartCount();
     updateCartDisplay();
 }
-```
