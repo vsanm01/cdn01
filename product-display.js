@@ -1,144 +1,215 @@
 // ============================================================================
 // MODULE 2: PRODUCT DISPLAY
 // ============================================================================
+// product-display.js - Product Display & Categories
+// CDN Version for ecommerce_blogger_theme
 
-const ProductDisplay = (function() {
-    'use strict';
+let currentCategory = 'all';
+let allCategories = [];
 
-    let config = {
-        containerSelector: '#products-grid',
-        categoryContainerSelector: '#categories',
-        onAddToCart: null,
-        onCategoryFilter: null,
-        currencySymbol: '₹'
-    };
-
-    let allCategories = [];
-
-    function init(options) {
-        config = { ...config, ...options };
+// Display products with fixed image handling
+function displayProducts(productList) {
+    const grid = document.getElementById('products-grid') || document.getElementById('productsContainer');
+    if (!grid) {
+        console.error('Products grid container not found');
+        return;
     }
-
-    function escapeHtml(text) {
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return text.replace(/[&<>"']/g, m => map[m]);
+    
+    grid.innerHTML = '';
+    
+    if (productList.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #6c757d; font-size: 18px;">No products match your search criteria.</div>';
+        return;
     }
-
-    function createImageContent(product) {
-        if (product.image && DBIntegration.isValidURL(product.image)) {
-            const imageUrl = DBIntegration.convertGoogleDriveUrl(product.image);
-            return `<img src="${imageUrl}" alt="${escapeHtml(product.name)}" 
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div style="display: none; font-size: 48px;">🛒</div>`;
+    
+    productList.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+        
+        let imageContent;
+        if (product.image && isValidURL(product.image)) {
+            imageContent = `
+                <img src="${product.image}" alt="${product.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; font-size: 48px;">🛒</div>
+            `;
         } else if (product.image && product.image.trim() !== '') {
-            return `<div style="font-size: 48px;">${product.image}</div>`;
+            imageContent = `<div style="font-size: 48px;">${product.image}</div>`;
         } else {
-            return `<div style="font-size: 48px;">🛒</div>`;
+            imageContent = `<div style="font-size: 48px;">🛒</div>`;
         }
-    }
-
-    function createProductCard(product) {
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card.setAttribute('data-product-id', product.id);
-        const imageContent = createImageContent(product);
-
-        card.innerHTML = `
+        
+        productCard.innerHTML = `
             <div class="product-image">${imageContent}</div>
             <div class="product-info">
-                <h3 class="product-title">${escapeHtml(product.name)}</h3>
-                <button class="category-tag" data-category="${escapeHtml(product.category)}">
-                    ${escapeHtml(product.category)}
-                </button>
+                <h3 class="product-title">${product.name}</h3>
+                <button class="category-tag" onclick="filterByCategory('${product.category}', this)">${product.category}</button>
                 <div class="product-price">
-                    <span class="currency-symbol">${config.currencySymbol}</span>${product.price}
+                    <span class="currency-symbol">₹</span>${product.price}
                 </div>
-                <button class="add-to-cart" data-product-id="${product.id}">Add to Cart</button>
+                <button class="add-to-cart" onclick="addToCart(${product.id}, this)">Add to Cart</button>
             </div>
         `;
+        grid.appendChild(productCard);
+    });
+}
 
-        card.querySelector('.add-to-cart').addEventListener('click', function() {
-            if (config.onAddToCart) config.onAddToCart(product.id);
-            const originalText = this.textContent;
-            this.textContent = 'Added!';
-            this.style.background = '#28a745';
-            setTimeout(() => { this.textContent = originalText; }, 1000);
-        });
-
-        card.querySelector('.category-tag').addEventListener('click', function() {
-            filterByCategory(product.category);
-        });
-
-        return card;
+// Function to update categories dynamically
+function updateCategories() {
+    const categoriesContainer = document.getElementById('categories');
+    if (!categoriesContainer) return;
+    
+    const uniqueCategories = [...new Set(window.products.map(p => p.category))].filter(cat => cat);
+    allCategories = uniqueCategories;
+    
+    categoriesContainer.innerHTML = `
+        <a href="#" class="category-item active always-visible" onclick="filterProducts('all', this)">All</a>
+    `;
+    
+    const isMobile = window.innerWidth <= 768;
+    const maxCategories = isMobile ? 4 : 6;
+    const visibleCategories = uniqueCategories.slice(0, maxCategories);
+    const hiddenCategories = uniqueCategories.slice(maxCategories);
+    
+    visibleCategories.forEach(category => {
+        const categoryLink = document.createElement('a');
+        categoryLink.href = '#';
+        categoryLink.className = 'category-item';
+        categoryLink.textContent = category;
+        categoryLink.onclick = function() { filterProducts(category, this); };
+        categoriesContainer.appendChild(categoryLink);
+    });
+    
+    if (hiddenCategories.length > 0) {
+        const moreButton = document.createElement('button');
+        moreButton.className = 'category-item more-btn';
+        moreButton.textContent = `+${hiddenCategories.length} More`;
+        moreButton.onclick = showAllCategories;
+        categoriesContainer.appendChild(moreButton);
     }
+}
 
-    function displayProducts(productList) {
-        const container = document.querySelector(config.containerSelector);
-        if (!container) return;
-        container.innerHTML = '';
-        
-        if (productList.length === 0) {
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: #6c757d;">No products found</div>';
-            return;
+// Function to show all categories
+function showAllCategories() {
+    const categoriesContainer = document.getElementById('categories');
+    if (!categoriesContainer) return;
+    
+    categoriesContainer.innerHTML = `
+        <a href="#" class="category-item active always-visible" onclick="filterProducts('all', this)">All</a>
+    `;
+    
+    allCategories.forEach(category => {
+        const categoryLink = document.createElement('a');
+        categoryLink.href = '#';
+        categoryLink.className = 'category-item';
+        categoryLink.textContent = category;
+        categoryLink.onclick = function() { filterProducts(category, this); };
+        categoriesContainer.appendChild(categoryLink);
+    });
+    
+    const lessButton = document.createElement('button');
+    lessButton.className = 'category-item less-btn';
+    lessButton.textContent = 'Show Less';
+    lessButton.onclick = updateCategories;
+    categoriesContainer.appendChild(lessButton);
+    
+    if (typeof setupCategoryScroll === 'function') setupCategoryScroll();
+}
+
+// Function to setup category scrolling
+function setupCategoryScroll() {
+    const categoriesContainer = document.getElementById('categories');
+    const leftBtn = document.getElementById('scroll-left');
+    const rightBtn = document.getElementById('scroll-right');
+    
+    if (!categoriesContainer) return;
+    
+    if (categoriesContainer.scrollWidth > categoriesContainer.clientWidth) {
+        if (leftBtn) leftBtn.style.display = 'flex';
+        if (rightBtn) rightBtn.style.display = 'flex';
+        updateScrollButtons();
+    } else {
+        if (leftBtn) leftBtn.style.display = 'none';
+        if (rightBtn) rightBtn.style.display = 'none';
+    }
+    
+    categoriesContainer.addEventListener('scroll', updateScrollButtons);
+}
+
+// Function to update scroll button states
+function updateScrollButtons() {
+    const categoriesContainer = document.getElementById('categories');
+    const leftBtn = document.getElementById('scroll-left');
+    const rightBtn = document.getElementById('scroll-right');
+    
+    if (!categoriesContainer) return;
+    
+    if (leftBtn) leftBtn.disabled = categoriesContainer.scrollLeft <= 0;
+    
+    if (rightBtn) {
+        rightBtn.disabled = categoriesContainer.scrollLeft >= 
+            (categoriesContainer.scrollWidth - categoriesContainer.clientWidth);
+    }
+}
+
+// Function to scroll categories
+function scrollCategories(direction) {
+    const categoriesContainer = document.getElementById('categories');
+    if (!categoriesContainer) return;
+    
+    const scrollAmount = 200;
+    
+    if (direction === 'left') {
+        categoriesContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+        categoriesContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+}
+
+// Filter products by category
+function filterProducts(category, element) {
+    document.querySelectorAll('.category-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    element.classList.add('active');
+    
+    currentCategory = category;
+    const filtered = category === 'all' ? window.products : window.products.filter(p => p.category === category);
+    displayProducts(filtered);
+}
+
+// Filter by category from product tag
+function filterByCategory(category, element) {
+    const categoryTabs = document.querySelectorAll('.category-item');
+    categoryTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.textContent.toLowerCase() === category.toLowerCase()) {
+            tab.classList.add('active');
         }
-        
-        productList.forEach(product => {
-            container.appendChild(createProductCard(product));
-        });
-    }
+    });
+    
+    currentCategory = category;
+    const filtered = window.products.filter(p => p.category === category);
+    displayProducts(filtered);
+}
 
-    function displayCategories(categories) {
-        const container = document.querySelector(config.categoryContainerSelector);
-        if (!container) return;
-        allCategories = categories;
-        const isMobile = window.innerWidth <= 768;
-        const maxCategories = isMobile ? 4 : 6;
-        const visibleCategories = categories.slice(0, maxCategories);
-        
-        container.innerHTML = '<a href="#" class="category-item active always-visible" data-category="all">All</a>';
-        
-        visibleCategories.forEach(category => {
-            const categoryLink = document.createElement('a');
-            categoryLink.href = '#';
-            categoryLink.className = 'category-item';
-            categoryLink.textContent = category;
-            categoryLink.setAttribute('data-category', category);
-            categoryLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                filterByCategory(category);
-            });
-            container.appendChild(categoryLink);
-        });
+// Helper function (shared)
+function isValidURL(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
     }
+}
 
-    function filterByCategory(category) {
-        document.querySelectorAll('.category-item').forEach(item => {
-            item.classList.remove('active');
-            if (item.getAttribute('data-category') === category) {
-                item.classList.add('active');
-            }
-        });
-        if (config.onCategoryFilter) config.onCategoryFilter(category);
-    }
+// Export functions
+window.displayProducts = displayProducts;
+window.updateCategories = updateCategories;
+window.showAllCategories = showAllCategories;
+window.setupCategoryScroll = setupCategoryScroll;
+window.scrollCategories = scrollCategories;
+window.filterProducts = filterProducts;
+window.filterByCategory = filterByCategory;
 
-    function showLoading() {
-        const container = document.querySelector(config.containerSelector);
-        if (container) {
-            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #6c757d; font-size: 18px;">
-                <div style="font-size: 48px; margin-bottom: 16px; animation: spin 1s linear infinite;">⏳</div>
-                <div>Loading products...</div></div>`;
-        }
-    }
-
-    function showError(message) {
-        const container = document.querySelector(config.containerSelector);
-        if (container) {
-            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #dc3545; font-size: 18px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                <div>Failed to load products</div>
-                <div style="font-size: 14px; margin-top: 8px; color: #6c757d;">${escapeHtml(message)}</div></div>`;
-        }
-    }
-
-    return { init, displayProducts, displayCategories, filterByCategory, showLoading, showError };
-})();
+console.log('✅ product-display.js loaded successfully');
