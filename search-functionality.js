@@ -1,7 +1,4 @@
-
-## 4. **search-functionality.js** - Search & Suggestions
-
-```javascript
+//4. **search-functionality.js** - Search & Suggestions
 // Search functionality
 function setupSearchSuggestions() {
     const searchInput = document.getElementById('search-input');
@@ -80,5 +77,3 @@ function searchProducts() {
     displayProducts(filtered);
     document.getElementById('search-suggestions').style.display = 'none';
 }
-```
-
