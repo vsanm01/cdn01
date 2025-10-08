@@ -1,7 +1,4 @@
-
-## 3. **product-display.js** - Product Display & Filtering
-
-```javascript
+//3. **product-display.js** - Product Display & Filtering
 // Product display and filtering functions
 function displayProducts(productList) {
     const grid = document.getElementById('products-grid');
