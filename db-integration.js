@@ -1,7 +1,4 @@
-
-## 2. **db-integration.js** - Database & Data Fetching
-
-```javascript
+// 2. **db-integration.js** - Database & Data Fetching
 // Database integration functions
 function isValidURL(string) {
     try {
