@@ -1,268 +1,136 @@
-// Cart Management Module
-// Handles shopping cart operations
-
-class CartManager {
-  constructor() {
-    this.cart = [];
-    this.cartData = null; // In-memory storage
-  }
-
-  // Initialize cart UI
-  init() {
-    this.loadCart();
-    this.setupEventListeners();
-    this.updateCartUI();
-  }
-
-  // Setup event listeners
-  setupEventListeners() {
-    const cartIcon = document.getElementById('cartIcon');
-    const closeCart = document.getElementById('closeCart');
-    const overlay = document.getElementById('overlay');
-
-    if (cartIcon) {
-      cartIcon.addEventListener('click', () => this.openCart());
-    }
-
-    if (closeCart) {
-      closeCart.addEventListener('click', () => this.closeCart());
-    }
-
-    if (overlay) {
-      overlay.addEventListener('click', () => this.closeCart());
-    }
-  }
-
-  // Add item to cart
-  addItem(product, quantity = 1) {
-    const existingItem = this.cart.find(item => item.id === product.id);
-
-    if (existingItem) {
-      existingItem.quantity += quantity;
-    } else {
-      this.cart.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: quantity
-      });
-    }
-
-    this.saveCart();
-    this.updateCartUI();
-    this.showNotification(`${product.name} added to cart`);
-  }
-
-  // Remove item from cart
-  removeItem(productId) {
-    this.cart = this.cart.filter(item => item.id !== productId);
-    this.saveCart();
-    this.updateCartUI();
-  }
-
-  // Update item quantity
-  updateQuantity(productId, quantity) {
-    const item = this.cart.find(item => item.id === productId);
+// ========================================
+// Example: cart-management.js
+// ========================================
+(function() {
+    'use strict';
     
-    if (item) {
-      if (quantity <= 0) {
-        this.removeItem(productId);
-      } else {
-        item.quantity = quantity;
-        this.saveCart();
-        this.updateCartUI();
-      }
-    }
-  }
-
-  // Get cart items
-  getItems() {
-    return this.cart;
-  }
-
-  // Get cart total
-  getTotal() {
-    return this.cart.reduce((total, item) => {
-      return total + (item.price * item.quantity);
-    }, 0);
-  }
-
-  // Get cart count
-  getCount() {
-    return this.cart.reduce((count, item) => count + item.quantity, 0);
-  }
-
-  // Clear cart
-  clearCart() {
-    this.cart = [];
-    this.saveCart();
-    this.updateCartUI();
-  }
-
-  // Save cart to memory
-  saveCart() {
-    try {
-      this.cartData = JSON.stringify(this.cart);
-    } catch (error) {
-      console.error('Error saving cart:', error);
-    }
-  }
-
-  // Load cart from memory
-  loadCart() {
-    try {
-      if (this.cartData) {
-        this.cart = JSON.parse(this.cartData);
-      }
-    } catch (error) {
-      console.error('Error loading cart:', error);
-      this.cart = [];
-    }
-  }
-
-  // Update cart UI
-  updateCartUI() {
-    this.updateCartCount();
-    this.updateCartItems();
-    this.updateCartTotal();
-  }
-
-  // Update cart count badge
-  updateCartCount() {
-    const countElement = document.getElementById('cartCount');
-    if (countElement) {
-      const count = this.getCount();
-      countElement.textContent = count;
-      countElement.style.display = count > 0 ? 'flex' : 'none';
-    }
-  }
-
-  // Update cart items display
-  updateCartItems() {
-    const cartItemsContainer = document.getElementById('cartItems');
-    if (!cartItemsContainer) return;
-
-    if (this.cart.length === 0) {
-      cartItemsContainer.innerHTML = '<p style="text-align:center;padding:40px;color:#999;">Your cart is empty</p>';
-      return;
-    }
-
-    cartItemsContainer.innerHTML = this.cart.map(item => this.createCartItemHTML(item)).join('');
-    this.attachCartItemListeners();
-  }
-
-  // Create cart item HTML
-  createCartItemHTML(item) {
-    return `
-      <div class="cart-item" style="display:flex;gap:15px;margin-bottom:15px;padding:15px;border:1px solid #e0e0e0;border-radius:5px;">
-        <img src="${item.image}" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:5px;" />
-        <div style="flex:1;">
-          <h4 style="margin:0 0 5px 0;font-size:14px;">${item.name}</h4>
-          <p style="margin:0;color:#007bff;font-weight:bold;">$${item.price.toFixed(2)}</p>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
-            <button class="qty-btn" data-action="decrease" data-id="${item.id}" style="width:25px;height:25px;border:1px solid #ddd;background:white;cursor:pointer;border-radius:3px;">-</button>
-            <span>${item.quantity}</span>
-            <button class="qty-btn" data-action="increase" data-id="${item.id}" style="width:25px;height:25px;border:1px solid #ddd;background:white;cursor:pointer;border-radius:3px;">+</button>
-            <button class="remove-btn" data-id="${item.id}" style="margin-left:auto;color:#dc3545;border:none;background:transparent;cursor:pointer;">Remove</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // Attach event listeners to cart items
-  attachCartItemListeners() {
-    const qtyButtons = document.querySelectorAll('.qty-btn');
-    qtyButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const action = e.target.getAttribute('data-action');
-        const id = parseInt(e.target.getAttribute('data-id'));
-        const item = this.cart.find(item => item.id === id);
+    console.log('✅ cart-management.js loading...');
+    
+    function addToCart(productId) {
+        const product = window.ECOM_STATE.products.find(p => p.id === productId);
+        if (!product) return;
         
-        if (item) {
-          if (action === 'increase') {
-            this.updateQuantity(id, item.quantity + 1);
-          } else if (action === 'decrease') {
-            this.updateQuantity(id, item.quantity - 1);
-          }
+        const existingItem = window.ECOM_STATE.cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            window.ECOM_STATE.cart.push({
+                ...product,
+                quantity: 1
+            });
         }
-      });
-    });
-
-    const removeButtons = document.querySelectorAll('.remove-btn');
-    removeButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const id = parseInt(e.target.getAttribute('data-id'));
-        this.removeItem(id);
-      });
-    });
-  }
-
-  // Update cart total
-  updateCartTotal() {
-    const totalElement = document.getElementById('cartTotal');
-    if (totalElement) {
-      totalElement.textContent = this.getTotal().toFixed(2);
+        
+        updateCartCount();
+        updateCartDisplay();
+        showCartNotification();
+        
+        // Save to localStorage (if you want persistence)
+        localStorage.setItem('cart', JSON.stringify(window.ECOM_STATE.cart));
     }
-  }
-
-  // Open cart sidebar
-  openCart() {
-    const cartSidebar = document.getElementById('cartSidebar');
-    const overlay = document.getElementById('overlay');
     
-    if (cartSidebar) {
-      cartSidebar.classList.add('open');
+    function removeFromCart(productId) {
+        window.ECOM_STATE.cart = window.ECOM_STATE.cart.filter(item => item.id !== productId);
+        updateCartDisplay();
+        updateCartCount();
+        localStorage.setItem('cart', JSON.stringify(window.ECOM_STATE.cart));
     }
-    if (overlay) {
-      overlay.classList.add('active');
-    }
-  }
-
-  // Close cart sidebar
-  closeCart() {
-    const cartSidebar = document.getElementById('cartSidebar');
-    const overlay = document.getElementById('overlay');
     
-    if (cartSidebar) {
-      cartSidebar.classList.remove('open');
+    function updateQuantity(productId, delta) {
+        const item = window.ECOM_STATE.cart.find(i => i.id === productId);
+        if (!item) return;
+        
+        item.quantity += delta;
+        
+        if (item.quantity <= 0) {
+            removeFromCart(productId);
+        } else {
+            updateCartDisplay();
+            updateCartCount();
+            localStorage.setItem('cart', JSON.stringify(window.ECOM_STATE.cart));
+        }
     }
-    if (overlay) {
-      overlay.classList.remove('active');
+    
+    function updateCartCount() {
+        const count = window.ECOM_STATE.cart.reduce((sum, item) => sum + item.quantity, 0);
+        const countEl = document.getElementById('cart-count');
+        if (countEl) {
+            countEl.textContent = count;
+        }
     }
-  }
-
-  // Show notification
-  showNotification(message) {
-    const notification = document.createElement('div');
-    notification.textContent = message;
-    notification.style.cssText = `
-      position: fixed;
-      top: 80px;
-      right: 20px;
-      background: #28a745;
-      color: white;
-      padding: 15px 20px;
-      border-radius: 5px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 3000;
-      animation: slideIn 0.3s ease;
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.animation = 'slideOut 0.3s ease';
-      setTimeout(() => notification.remove(), 300);
-    }, 2000);
-  }
-}
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  window.cartManager = new CartManager();
-  window.cartManager.init();
-});
-
-console.log('Cart Management loaded');
+    
+    function updateCartDisplay() {
+        const cartItems = document.getElementById('cart-items');
+        if (!cartItems) return;
+        
+        if (window.ECOM_STATE.cart.length === 0) {
+            cartItems.innerHTML = '<div class="empty-cart">Your cart is empty</div>';
+            document.getElementById('total-amount').textContent = '0';
+            return;
+        }
+        
+        cartItems.innerHTML = window.ECOM_STATE.cart.map(item => `
+            <div class="cart-item">
+                <div class="item-image">
+                    ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '📦'}
+                </div>
+                <div class="item-details">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-price">₹${item.price}</div>
+                </div>
+                <div class="qty-controls">
+                    <button class="qty-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
+                    <span class="qty-display">${item.quantity}</span>
+                    <button class="qty-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
+                </div>
+                <button class="remove-item" onclick="removeFromCart(${item.id})">×</button>
+            </div>
+        `).join('');
+        
+        const total = window.ECOM_STATE.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        document.getElementById('total-amount').textContent = total.toFixed(2);
+    }
+    
+    function toggleCart() {
+        const modal = document.getElementById('cart-modal');
+        if (modal) {
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+        }
+    }
+    
+    function showCartNotification() {
+        const notification = document.getElementById('cart-notification');
+        if (notification) {
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 2000);
+        }
+    }
+    
+    // Load cart from localStorage on init
+    function loadCart() {
+        const saved = localStorage.getItem('cart');
+        if (saved) {
+            try {
+                window.ECOM_STATE.cart = JSON.parse(saved);
+                updateCartCount();
+            } catch (e) {
+                console.error('Error loading cart:', e);
+            }
+        }
+    }
+    
+    // CRITICAL: Expose to global scope
+    window.addToCart = addToCart;
+    window.removeFromCart = removeFromCart;
+    window.updateQuantity = updateQuantity;
+    window.updateCartCount = updateCartCount;
+    window.updateCartDisplay = updateCartDisplay;
+    window.toggleCart = toggleCart;
+    window.showCartNotification = showCartNotification;
+    window.loadCart = loadCart;
+    
+    // Auto-load cart
+    loadCart();
+    
+    console.log('✅ cart-management.js loaded and executed');
+})();
