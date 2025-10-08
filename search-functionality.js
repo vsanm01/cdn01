@@ -1,33 +1,29 @@
-// ===== 4. search-functionality.js =====
+// ========================================
+// FILE 4: search-functionality.js
+// ========================================
 (function() {
-    'use strict';
-    
     window.setupSearchSuggestions = function() {
-        const searchInput = document.getElementById('search-input');
-        const suggestions = document.getElementById('search-suggestions');
+        var searchInput = document.getElementById('search-input');
+        var suggestions = document.getElementById('search-suggestions');
         
         if (!searchInput || !suggestions) return;
         
         searchInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase().trim();
+            var query = this.value.toLowerCase().trim();
             
             if (query.length < 2) {
                 suggestions.style.display = 'none';
                 return;
             }
             
-            const matches = window.ECOM_STATE.products.filter(p => 
-                p.name.toLowerCase().includes(query) || 
-                p.category.toLowerCase().includes(query)
-            ).slice(0, 5);
+            var matches = window.ECOM_STATE.products.filter(function(p) {
+                return p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query);
+            }).slice(0, 5);
             
             if (matches.length > 0) {
-                suggestions.innerHTML = matches.map(p => `
-                    <div class="suggestion-item" onclick="window.selectSuggestion('${p.name.replace(/'/g, "\\'")}')">
-                        <span>${p.name}</span>
-                        <span class="suggestion-label">${p.category}</span>
-                    </div>
-                `).join('');
+                suggestions.innerHTML = matches.map(function(p) {
+                    return '<div class="suggestion-item" onclick="window.selectSuggestion(\'' + p.name.replace(/'/g, "\\'") + '\')"><span>' + p.name + '</span><span class="suggestion-label">' + p.category + '</span></div>';
+                }).join('');
                 suggestions.style.display = 'block';
             } else {
                 suggestions.style.display = 'none';
@@ -42,8 +38,8 @@
     };
 
     window.selectSuggestion = function(productName) {
-        const searchInput = document.getElementById('search-input');
-        const suggestions = document.getElementById('search-suggestions');
+        var searchInput = document.getElementById('search-input');
+        var suggestions = document.getElementById('search-suggestions');
         
         if (searchInput) searchInput.value = productName;
         if (suggestions) suggestions.style.display = 'none';
@@ -52,22 +48,20 @@
     };
 
     window.searchProducts = function() {
-        const query = document.getElementById('search-input').value.toLowerCase().trim();
+        var query = document.getElementById('search-input').value.toLowerCase().trim();
         
         if (!query) {
             window.displayProducts(window.ECOM_STATE.products);
             return;
         }
         
-        const results = window.ECOM_STATE.products.filter(p => 
-            p.name.toLowerCase().includes(query) || 
-            p.category.toLowerCase().includes(query)
-        );
+        var results = window.ECOM_STATE.products.filter(function(p) {
+            return p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query);
+        });
         
         window.displayProducts(results);
         document.getElementById('search-suggestions').style.display = 'none';
     };
-    
-    console.log('✅ search-functionality.js loaded');
-})();
 
+    console.log('✅ search-functionality.js loaded and executed');
+})();
