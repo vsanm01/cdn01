@@ -1,7 +1,5 @@
 
-## 6. **checkout-system.js** - Checkout & Order Processing
-
-```javascript
+// 6. **checkout-system.js - Checkout & Order Processing
 // Checkout system
 function openCheckout() {
     if (window.ECOM_STATE.cart.length === 0) {
@@ -132,5 +130,3 @@ function setupCheckoutForm() {
         window.ECOM_STATE.deliveryType = 'delivery';
     });
 }
-```
-
