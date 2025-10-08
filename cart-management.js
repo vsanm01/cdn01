@@ -1,118 +1,110 @@
-// 5.cart-management.js
-// Cart management functions
-function addToCart(productId, buttonElement) {
-    const product = window.ECOM_STATE.products.find(p => p.id === productId);
-    if (!product) return;
+// ===== 5. cart-management.js =====
+(function() {
+    'use strict';
     
-    const existingItem = window.ECOM_STATE.cart.find(item => item.id === productId);
-    
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        window.ECOM_STATE.cart.push({ ...product, quantity: 1 });
-    }
-    
-    showCartNotification();
-    
-    const originalText = buttonElement.textContent;
-    buttonElement.textContent = 'Added!';
-    buttonElement.style.background = '#28a745';
-    
-    setTimeout(() => {
-        buttonElement.textContent = originalText;
-        buttonElement.style.background = '#28a745';
-    }, 1000);
-    
-    updateCartCount();
-    updateCartDisplay();
-}
-
-function showCartNotification() {
-    const notification = document.getElementById('cart-notification');
-    notification.classList.add('show');
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 2000);
-}
-
-function updateCartCount() {
-    const count = window.ECOM_STATE.cart.reduce((total, item) => total + item.quantity, 0);
-    document.getElementById('cart-count').textContent = count;
-}
-
-function toggleCart() {
-    const modal = document.getElementById('cart-modal');
-    modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-    if (modal.style.display === 'block') {
-        updateCartDisplay();
-    }
-}
-
-function updateCartDisplay() {
-    const cartItems = document.getElementById('cart-items');
-    const totalAmount = document.getElementById('total-amount');
-    
-    if (window.ECOM_STATE.cart.length === 0) {
-        cartItems.innerHTML = '<div class="empty-cart">Your cart is empty<br/>Add some items to get started!</div>';
-        totalAmount.textContent = '0';
-        return;
-    }
-    
-    cartItems.innerHTML = '';
-    let total = 0;
-    
-    window.ECOM_STATE.cart.forEach(item => {
-        const itemTotal = item.price * item.quantity;
-        total += itemTotal;
+    window.addToCart = function(productId) {
+        const product = window.ECOM_STATE.products.find(p => p.id === productId);
+        if (!product) return;
         
-        const cartItem = document.createElement('div');
-        cartItem.className = 'cart-item';
+        const existingItem = window.ECOM_STATE.cart.find(item => item.id === productId);
         
-        let cartImageContent;
-        if (item.image && isValidURL(item.image)) {
-            cartImageContent = `<img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div style="display: none; font-size: 24px;">🛒</div>`;
-        } else if (item.image && item.image.trim() !== '') {
-            cartImageContent = `<div style="font-size: 24px;">${item.image}</div>`;
+        if (existingItem) {
+            existingItem.quantity += 1;
         } else {
-            cartImageContent = `<div style="font-size: 24px;">🛒</div>`;
+            window.ECOM_STATE.cart.push({...product, quantity: 1});
         }
         
-        cartItem.innerHTML = `
-            <div class="item-image">${cartImageContent}</div>
-            <div class="item-details">
-                <div class="item-name">${item.name}</div>
-                <div class="item-price">${ECOM_CONFIG.CURRENCY_SYMBOL}${item.price}</div>
-            </div>
-            <div class="qty-controls">
-                <button class="qty-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
-                <span class="qty-display">${item.quantity}</span>
-                <button class="qty-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
-            </div>
-            <button class="remove-item" onclick="removeFromCart(${item.id})">×</button>
-        `;
-        cartItems.appendChild(cartItem);
-    });
-    
-    totalAmount.textContent = total;
-}
+        window.updateCartCount();
+        window.showCartNotification();
+    };
 
-function updateQuantity(productId, change) {
-    const item = window.ECOM_STATE.cart.find(item => item.id === productId);
-    if (item) {
+    window.updateCartCount = function() {
+        const count = window.ECOM_STATE.cart.reduce((sum, item) => sum + item.quantity, 0);
+        const countEl = document.getElementById('cart-count');
+        if (countEl) countEl.textContent = count;
+    };
+
+    window.showCartNotification = function() {
+        const notification = document.getElementById('cart-notification');
+        if (!notification) return;
+        
+        notification.classList.add('show');
+        setTimeout(() => notification.classList.remove('show'), 2000);
+    };
+
+    window.toggleCart = function() {
+        const modal = document.getElementById('cart-modal');
+        if (!modal) return;
+        
+        if (modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        } else {
+            window.renderCart();
+            modal.style.display = 'flex';
+        }
+    };
+
+    window.renderCart = function() {
+        const container = document.getElementById('cart-items');
+        const totalEl = document.getElementById('total-amount');
+        
+        if (!container || !totalEl) return;
+        
+        if (window.ECOM_STATE.cart.length === 0) {
+            container.innerHTML = '<div class="empty-cart">Your cart is empty</div>';
+            totalEl.textContent = '0';
+            return;
+        }
+        
+        container.innerHTML = window.ECOM_STATE.cart.map(item => {
+            const imageUrl = window.convertGoogleDriveUrl(item.image);
+            const isImageUrl = window.isValidURL(imageUrl);
+            
+            return `
+                <div class="cart-item">
+                    <div class="item-image">
+                        ${isImageUrl ? 
+                            `<img src="${imageUrl}" alt="${item.name}">` : 
+                            item.image
+                        }
+                    </div>
+                    <div class="item-details">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-price">₹${item.price}</div>
+                    </div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="window.updateQuantity(${item.id}, -1)">-</button>
+                        <span class="qty-display">${item.quantity}</span>
+                        <button class="qty-btn" onclick="window.updateQuantity(${item.id}, 1)">+</button>
+                    </div>
+                    <button class="remove-item" onclick="window.removeFromCart(${item.id})">×</button>
+                </div>
+            `;
+        }).join('');
+        
+        const total = window.ECOM_STATE.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        totalEl.textContent = total;
+    };
+
+    window.updateQuantity = function(productId, change) {
+        const item = window.ECOM_STATE.cart.find(i => i.id === productId);
+        if (!item) return;
+        
         item.quantity += change;
+        
         if (item.quantity <= 0) {
-            removeFromCart(productId);
+            window.removeFromCart(productId);
         } else {
-            updateCartCount();
-            updateCartDisplay();
+            window.renderCart();
+            window.updateCartCount();
         }
-    }
-}
+    };
 
-function removeFromCart(productId) {
-    window.ECOM_STATE.cart = window.ECOM_STATE.cart.filter(item => item.id !== productId);
-    updateCartCount();
-    updateCartDisplay();
-}
+    window.removeFromCart = function(productId) {
+        window.ECOM_STATE.cart = window.ECOM_STATE.cart.filter(item => item.id !== productId);
+        window.renderCart();
+        window.updateCartCount();
+    };
+    
+    console.log('✅ cart-management.js loaded');
+})();
