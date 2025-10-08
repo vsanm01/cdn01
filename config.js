@@ -1,7 +1,4 @@
-
-## 1. **config.js** - Configuration & Constants
-
-```javascript
+//1. **config.js** - Configuration & Constants
 // Configuration file for the e-commerce system
 const ECOM_CONFIG = {
     SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxZssNUTXM1Or7grmlYUw12U_jcQFgynxST-0brL4LtOZmZkh6ADiG0Zm3yMtYoXMzCoA/exec',
@@ -21,6 +18,3 @@ window.ECOM_STATE = {
     deliveryType: 'delivery',
     allCategories: []
 };
-
-
-
