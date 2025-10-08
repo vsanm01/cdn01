@@ -1,69 +1,86 @@
-//3. **product-display.js** - Product Display & Filtering
-// Product display and filtering functions
-function displayProducts(productList) {
-    const grid = document.getElementById('products-grid');
-    grid.innerHTML = '';
+// ===== 3. product-display.js =====
+(function() {
+    'use strict';
     
-    if (productList.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #6c757d; font-size: 18px;">No products match your search criteria.</div>';
-        return;
-    }
-    
-    productList.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-
-        let imageContent;
-        if (product.image && isValidURL(product.image)) {
-            const imageUrl = convertGoogleDriveUrl(product.image);
-            imageContent = `
-                <img src="${imageUrl}" alt="${product.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div style="display: none; font-size: 48px;">🛒</div>
-            `;
-        } else if (product.image && product.image.trim() !== '') {
-            imageContent = `<div style="font-size: 48px;">${product.image}</div>`;
-        } else {
-            imageContent = `<div style="font-size: 48px;">🛒</div>`;
+    window.displayProducts = function(products) {
+        const grid = document.getElementById('products-grid');
+        if (!grid) return;
+        
+        if (!products || products.length === 0) {
+            window.showNoProductsMessage();
+            return;
         }
-
-        productCard.innerHTML = `
-            <div class="product-image">${imageContent}</div>
-            <div class="product-info">
-                <h3 class="product-title">${product.name}</h3>
-                <button class="category-tag" onclick="filterByCategory('${product.category}', this)">${product.category}</button>
-                <div class="product-price">
-                    <span class="currency-symbol">${ECOM_CONFIG.CURRENCY_SYMBOL}</span>${product.price}
+        
+        grid.innerHTML = products.map(product => {
+            const imageUrl = window.convertGoogleDriveUrl(product.image);
+            const isImageUrl = window.isValidURL(imageUrl);
+            
+            return `
+                <div class="product-card">
+                    <div class="product-image">
+                        ${isImageUrl ? 
+                            `<img src="${imageUrl}" alt="${product.name}" onerror="this.parentElement.innerHTML='🛒'">` : 
+                            product.image
+                        }
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-title">${product.name}</h3>
+                        <div class="product-price">
+                            <span class="currency-symbol">₹</span>${product.price}
+                        </div>
+                        <button class="category-tag" onclick="window.filterProducts('${product.category}', this)">
+                            ${product.category}
+                        </button>
+                        <button class="add-to-cart" onclick="window.addToCart(${product.id})">
+                            Add to Cart
+                        </button>
+                    </div>
                 </div>
-                <button class="add-to-cart" onclick="addToCart(${product.id}, this)">Add to Cart</button>
-            </div>
-        `;
-        grid.appendChild(productCard);
-    });
-}
+            `;
+        }).join('');
+    };
 
-function filterProducts(category, element) {
-    document.querySelectorAll('.category-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    element.classList.add('active');
-    
-    window.ECOM_STATE.currentCategory = category;
-    const filtered = category === 'all' ? window.ECOM_STATE.products : 
-                     window.ECOM_STATE.products.filter(p => p.category === category);
-    displayProducts(filtered);
-}
-
-function filterByCategory(category, element) {
-    const categoryTabs = document.querySelectorAll('.category-item');
-    categoryTabs.forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.textContent.toLowerCase() === category.toLowerCase()) {
-            tab.classList.add('active');
+    window.filterProducts = function(category, element) {
+        window.ECOM_STATE.currentCategory = category;
+        
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        if (element) {
+            const categoryItem = Array.from(document.querySelectorAll('.category-item'))
+                .find(item => item.textContent.trim() === category || 
+                             (category === 'all' && item.textContent.trim() === 'All'));
+            if (categoryItem) {
+                categoryItem.classList.add('active');
+            }
         }
-    });
+        
+        if (category === 'all') {
+            window.displayProducts(window.ECOM_STATE.products);
+        } else {
+            const filtered = window.ECOM_STATE.products.filter(p => 
+                p.category.toLowerCase() === category.toLowerCase()
+            );
+            window.displayProducts(filtered);
+        }
+    };
+
+    window.updateCategories = function() {
+        const categoriesContainer = document.getElementById('categories');
+        if (!categoriesContainer) return;
+        
+        const allCat = categoriesContainer.querySelector('.always-visible');
+        const categories = [...new Set(window.ECOM_STATE.products.map(p => p.category))];
+        
+        const isMobile = window.innerWidth <= 768;
+        const displayCategories = isMobile ? categories.slice(0, 5) : categories.slice(0, 8);
+        
+        categoriesContainer.innerHTML = allCat.outerHTML + displayCategories.map(cat => 
+            `<a class="category-item" href="#" onclick="window.filterProducts('${cat}', this); return false;">${cat}</a>`
+        ).join('');
+    };
     
-    window.ECOM_STATE.currentCategory = category;
-    const filtered = window.ECOM_STATE.products.filter(p => p.category === category);
-    displayProducts(filtered);
-}
+    console.log('✅ product-display.js loaded');
+})();
+
