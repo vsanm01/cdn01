@@ -1,17 +1,17 @@
-// ===== 7. ui-components.js =====
+// ========================================
+// FILE 7: ui-components.js
+// ========================================
 (function() {
-    'use strict';
-    
     window.setupCategoryScroll = function() {
-        const container = document.querySelector('.categories');
-        const leftBtn = document.getElementById('scroll-left');
-        const rightBtn = document.getElementById('scroll-right');
+        var container = document.querySelector('.categories');
+        var leftBtn = document.getElementById('scroll-left');
+        var rightBtn = document.getElementById('scroll-right');
         
         if (!container || !leftBtn || !rightBtn) return;
         
         function updateButtons() {
-            const isAtStart = container.scrollLeft <= 0;
-            const isAtEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1;
+            var isAtStart = container.scrollLeft <= 0;
+            var isAtEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1;
             
             leftBtn.disabled = isAtStart;
             rightBtn.disabled = isAtEnd;
@@ -25,16 +25,16 @@
     };
 
     window.scrollCategories = function(direction) {
-        const container = document.querySelector('.categories');
+        var container = document.querySelector('.categories');
         if (!container) return;
         
-        const scrollAmount = 200;
+        var scrollAmount = 200;
         container.scrollLeft += direction === 'left' ? -scrollAmount : scrollAmount;
     };
 
     window.setupModalClosing = function() {
-        const cartModal = document.getElementById('cart-modal');
-        const checkoutModal = document.getElementById('checkout-modal');
+        var cartModal = document.getElementById('cart-modal');
+        var checkoutModal = document.getElementById('checkout-modal');
         
         if (cartModal) {
             cartModal.addEventListener('click', function(e) {
@@ -48,6 +48,7 @@
             });
         }
     };
-    
-    console.log('✅ ui-components.js loaded');
+
+    console.log('✅ ui-components.js loaded and executed');
 })();
+
