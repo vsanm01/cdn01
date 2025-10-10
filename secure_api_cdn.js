@@ -12,7 +12,7 @@
  *   const data = await makeSecureRequest({ action: 'getData' });
  * </script>
  */
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 (function(global) {
     'use strict';
 
